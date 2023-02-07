@@ -8,7 +8,7 @@ Annotated genomes from Darwin Tree of Life project
 
 GFF files are available at: https://projects.ensembl.org/darwin-tree-of-life/
 
-This following work flow assumes you have all files in the same be careful with the shell script, ensure you call conda properly. (friend mentioned something about mamba working more efficiently than conda)
+This following work flow assumes you have all files in the same directory. Be careful with the shell script, ensure you call conda properly. (friend mentioned something about mamba working more efficiently than conda)
 
 **This script worked for both Nebria and Pterostichus, new tasks:**
 
