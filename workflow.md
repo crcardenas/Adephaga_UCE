@@ -8,7 +8,7 @@ Annotated genomes from Darwin Tree of Life project
 
 GFF files are available at: https://projects.ensembl.org/darwin-tree-of-life/
 
-This following work flow assumes you have all files in the same directory. Be careful with the shell script, ensure you call conda properly. (friend mentioned something about mamba working more efficiently than conda)
+This following work flow assumes you have all files in the same be careful with the shell script, ensure you call conda properly. (friend mentioned something about mamba working more efficiently than conda)
 
 **This script worked for both Nebria and Pterostichus, new tasks:**
 
@@ -135,7 +135,7 @@ bedtools intersect -a ../../bwa/pteMadi2_mem-probes.sorted.mapped.bed \
 ## intresect file format
 
 ```
-chromosome  feature_start   feature_end match   score   strand  feature_type    chromosome  match_start match_end
+chromosome  match_start   match_end match   score   strand  feature_type    chromosome  feature_start feature_end
 1	39310	39334	uce-127282_p11	60	+	introns	1	39281	39334
 1	39334	39419	uce-127282_p11	60	+	exons	1	39334	39463
 1	39334	39419	uce-127282_p11	60	+	exons	1	39334	39463
