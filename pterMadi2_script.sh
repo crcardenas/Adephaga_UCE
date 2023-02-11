@@ -58,10 +58,24 @@ samtools view -b -F 4 pterMadi2-probes.mem.sorted.bam > pterMadi2-probes.mem.sor
 # create bed file
 bedtools bamtobed -i pterMadi2-probes.mem.sorted.mapped.bam > pterMadi2-probes.mem.sorted.mapped.bed
 
-# get intersect of probes and genomic features
+#! Problems with R transformations of GFF attribute column, need to make two seperate files
+# mutate them, and then rejoin for our final file!
+# get intersect of probes and gene features(introns or exons)
+bedtools intersect -a pterMadi2-probes.mem.sorted.mapped.bed \
+    -b pterMadi2.sorted.introns.bed \
+    pterMadi2.sorted.exons.gff  \
+    -names intron exon \
+    -wb > Adephaga2.9-pterMadi2.introns-exons.intersect
+
+# get intersect of probes as intergenic or genenic
 bedtools intersect -a pterMadi2-probes.mem.sorted.mapped.bed \
     -b pterMadi2.sorted.intergenic.bed \
-    pterMadi2.sorted.introns.bed \
-    pterMadi2.sorted.exons.gff  \
-    -names intergenic intron exon \
-    -wb > Adephaga2.9-pterMadi2.intersect
+    pterMadi2.sorted.genes.gff \
+    -names intergenic gene \
+    -wb > Adephaga2.9-pterMadi2.intergenic-genentic.intersect
+
+# need to format the intersect file
+# if not columns are consistent, using a GFF file adds additional info. Here we get only what informatoin is necessary (not worried about strands or scores for now)
+# For every line that has ensembl print only those columns, all other lines should only have those columns
+awk '{ if ($9 =="ensembl") {print $1"\t"$2"\t"$3"\t"$4"\t"$7"\t"$8"\t"$11"\t"$12"\t"$16} else {print $1"\t"$2"\t"$3"\t"$4"\t"$7"\t"$8"\t"$9"\t"$10"\t"}}' Adephaga2.9-pterMadi2.introns-exons.intersect > Adephaga2.9-pterMadi2.introns-exons.out.intersect
+awk '{ if ($9 =="ensembl") {print $1"\t"$2"\t"$3"\t"$4"\t"$7"\t"$8"\t"$11"\t"$12"\t"$16} else {print $1"\t"$2"\t"$3"\t"$4"\t"$7"\t"$8"\t"$9"\t"$10"\t"}}' Adephaga2.9-pterMadi2.intergenic-genentic.intersect > Adephaga2.9-pterMadi2.intergenic-genentic.out.intersect
