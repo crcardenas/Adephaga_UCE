@@ -56,25 +56,26 @@ bedtools sort -i Pterostichus_madidus-GCA_911728475.1-2021_12-genes.gff -g pterM
 ## extract gene features
 We need to transform data from GFF (base 1) counting to bed counting (base 0), and print the gene feature ID (column 1, start -1, and end) using awk.
 ```
-awk '$3 == "gene" {print $1 "\t" $4-1 "\t" $5}' pterMadi2.sorted.gff > pterMadi2.sorted.genes.bed
+awk '$3 == "gene" {print $0}' pterMadi2.sorted.gff > pterMadi2.sorted.genes.gff
 ```
 
 ## excise intergenc sequences using bedtools complement
 this function gets the complement ranges of gene features (e.g., whats not a gene is intergenic).
 ```
-bedtools complement -i pterMadi2.sorted.genes.bed -g pterMadi2.genomefile > pterMadi2.sorted.intergenic.bed
+bedtools complement -i pterMadi2.sorted.genes.gff -g pterMadi2.genomefile > pterMadi2.sorted.intergenic.bed
 ```
 
 ## extract exons from gff file 
-similar to before (including CDS, start/stops, 5primlseUTR, etc.)
+ need two files here, one with your typical bed files, and another with just exon in gff format. The gff format will allow for exon identifiers to be included in those gff files
 ```
-awk '$3 == "exon" {print $1 "\t" $4-1 "\t" $5}' pterMadi2.sorted.gff > pterMadi2.sorted.exons.bed
+awk '$3 == "exon" {print $1 "\t" $4-1 "\t" $5}' pterMadi2.sorted.gff > pterMadi2.sorted.exons.bed # this will be so we can map intergenic regions
+awk '$3 == "exon" {print $0}' pterMadi2.sorted.gff > pterMadi2.sorted.exons.gff # this ensures that we have a gff file to give intersect file exon names for later workflow
 ```
 
 ## join and sort 
 ```
-bedtools sort -i <(cat pterMadi2.sorted.intergenic.bed pterMadi2.sorted.exons.bed) \
-    -g pterMadi2.genomefile > pterMadi2.intergenic-and-exons.sorted.bed
+bedtools sort -i <(cat pterMadi2.sorted.intergenic.bed pterMadi2.sorted.exons.bed) -g pterMadi2.genomefile > pterMadi2.intergenic-and-exons.sorted.bed
+
 ```
 
 ## identify introns
@@ -90,65 +91,66 @@ Now that we have our data formated and genomic characters seperated we can begin
 ## Map UCE probes to genome
 Find where the UCE probes match in the genome using bwa. 
 ```
-bwa index ../data/GCA_911728475.2_Pterostichus_madidus/pterMadi2_newheader.fna
+bwa index pterMadi2_newheader.fna
 ```
 
 ## alignt probes to genome using bwa-mem
 ```
-bwa mem ../data/GCA_911728475.2_Pterostichus_madidus/pterMadi2_newheader.fna
-../data/Adephaga_2.9Kv1_UCE-Probes.fasta > pteMadi2.sam
+bwa mem pterMadi2_newheader.fna Adephaga_2.9Kv1_UCE-Probes.fasta > pterMadi2-probes.sam
 ```
 
 ## convert sam to bam
 samtools is already running in my environment
 ```
-samtools view -h -b -S pteMadi2.sam > pteMadi2_mem-probes.bam
+samtools view -h -b -S pterMadi2-probes.sam > pterMadi2-probes.mem.bam
 ```
 
 ## sort bam file
 ```
-samtools sort pteMadi2_mem-probes.bam -o pteMadi2_mem-probes.sorted.bam
+samtools sort pterMadi2-probes.mem.bam -o pterMadi2-probes.mem.sorted.bam
 ```
 ## extract sequenced that mapped against the genome
 currently the bam file still contains unmapped information
 ```
-samtools view -b -F 4 pteMadi2_mem-probes.sorted.bam > pteMadi2_mem-probes.sorted.mapped.bam
+samtools view -b -F 4 pterMadi2-probes.mem.sorted.bam > pterMadi2-probes.mem.sorted.mapped.bam
 ```
 ## create a bed file 
 ```
-bedtools bamtobed -i pteMadi2_mem-probes.sorted.mapped.bam > pteMadi2_mem-probes.sorted.mapped.bed
+bedtools bamtobed -i pterMadi2-probes.mem.sorted.mapped.bam > pterMadi2-probes.mem.sorted.mapped.bed
 ```
 
 ## get intersect of adephaga probes and genome features
 use the -names option in the same order as the -b files this will give us a generic annotation to use in later analyses
 ```
-bedtools intersect -a ../../bwa/pteMadi2_mem-probes.sorted.mapped.bed \
+bedtools intersect -a pterMadi2-probes.mem.sorted.mapped.bed \
+    -b pterMadi2.sorted.introns.bed \
+    pterMadi2.sorted.exons.gff  \
+    -names intron exon \
+    -wb > Adephaga2.9-pterMadi2.introns-exons.intersect
+
+bedtools intersect -a pterMadi2-probes.mem.sorted.mapped.bed \
     -b pterMadi2.sorted.intergenic.bed \
-    pterMadi2.sorted.introns.bed \
-    pterMadi2.sorted.exons.bed  \
-    -names intergenic introns exons 
-    -wb > Adephaga2.9-pterMadi2.intersect
+    pterMadi2.sorted.genes.gff \
+    -names intergenic gene \
+    -wb > Adephaga2.9-pterMadi2.intergenic-genentic.intersect
 ```
+
+## format the intersect file
+Columns are inconsistent otherwise, using a GFF file adds additional (but necessary) info. Here we get only what informatoin is necessary (not worried about strands or scores for now)
+For every line that has ensembl print only those columns, all other lines should only have those columns
+
 
 ---
 
 ## intresect file format
 
 ```
-chromosome  match_start   match_end match   score   strand  feature_type    chromosome  feature_start feature_end
-1	39310	39334	uce-127282_p11	60	+	introns	1	39281	39334
-1	39334	39419	uce-127282_p11	60	+	exons	1	39334	39463
-1	39334	39419	uce-127282_p11	60	+	exons	1	39334	39463
-1	39339	39459	uce-127282_p12	60	+	exons	1	39334	39463
-1	39339	39459	uce-127282_p12	60	+	exons	1	39334	39463
-1	39355	39447	uce-127282_p8	34	+	exons	1	39334	39463
-1	39355	39447	uce-127282_p8	34	+	exons	1	39334	39463
-1	59597	59717	uce-258245_p11	60	+	exons	1	58919	59766
-1	59637	59757	uce-258245_p12	60	+	exons	1	58919	59766
-1	59654	59717	uce-258245_p5	58	+	exons	1	58919	59766
-1	59654	59737	uce-258245_p6	60	+	exons	1	58919	59766
-1	108104	108225	uce-146693_p5	60	+	intergenic	1	72314	146673
-1	108106	108220	uce-146693_p3	52	+	intergenic	1	72314	146673
+scaffold    qstart    qend    query   type    seqname    seqstart   seqend  attribute
+1	39310	39334	uce-127282_p11	60	+	intron	1	39281	39334
+1	39334	39419	uce-127282_p11	60	+	exon	1	ensembl	exon	39335	39463	.	+	.	Parent=transcript:ENSMPTT00005003008;constitutive=0;exon_id=ENSMPTE00005013128;rank=8;version=1
+1	39334	39419	uce-127282_p11	60	+	exon	1	ensembl	exon	39335	39463	.	+	.	Parent=transcript:ENSMPTT00005003000;constitutive=0;exon_id=ENSMPTE00005013128;rank=8;version=1
+1	39339	39459	uce-127282_p12	60	+	exon	1	ensembl	exon	39335	39463	.	+	.	Parent=transcript:ENSMPTT00005003008;constitutive=0;exon_id=ENSMPTE00005013128;rank=8;version=1
+1	39339	39459	uce-127282_p12	60	+	exon	1	ensembl	exon	39335	39463	.	+	.	Parent=transcript:ENSMPTT00005003000;constitutive=0;exon_id=ENSMPTE00005013128;rank=8;version=1
 ```
 
 ## general statistics using grep & wc in bash
