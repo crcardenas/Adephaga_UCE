@@ -12,6 +12,8 @@ This following work flow assumes you have all files in the same be careful with 
 
 **This script worked for both Nebria and Pterostichus, new tasks:**
 
+1) perform pipeline for all genomes
+
 1) print out example of compatable header for fasta file and gff file
 
 2) take intput (e.g., probemap.sh -f $0 -g $1 -p $2 -o $3) where -f is fasta/fna, -g is the gff3 file, -p $2 probe file, and -o is the extension to save files as (e.g., nebriBrevi1).
@@ -40,7 +42,7 @@ rm ./*_new.fna
 to get natsort use apt-get install python3-natsort, requires python3
 This gets used later in bedtools
 ```
-tr -s " " \\t < Pterostichus_madidus-GCA_911728475.1-2021_12-genes.gff | awk -F"\t" '{ if ($1~"##sequence-region") print $2 "\t" $4}' | natsort > pterMadi2.genomefile
+tr -s " " \\t < Pterostichus_madidus-GCA_911728475.2-2022_03-genes.gff | awk -F"\t" '{ if ($1~"##sequence-region") print $2 "\t" $4}' | natsort > pterMadi2.genomefile
 ```
 
 ## sort the gff file
@@ -50,8 +52,10 @@ here we need to identify the genomic features we are interested in our gff files
 
 my conda environment contains bedtools, bwa, samtools
 ```
+source /home.nepenthes/mambaforge/etc/profile.d/conda.sh 
+mamba init
 conda activate sam-bam-bedtools
-bedtools sort -i Pterostichus_madidus-GCA_911728475.1-2021_12-genes.gff -g pterMadi2.genomefile > pterMadi2.sorted.gff
+bedtools sort -i Pterostichus_madidus-GCA_911728475.2-2022_03-genes.gff -g pterMadi2.genomefile > pterMadi2.sorted.gff
 ```
 ## extract gene features
 We need to transform data from GFF (base 1) counting to bed counting (base 0), and print the gene feature ID (column 1, start -1, and end) using awk.
@@ -66,16 +70,15 @@ bedtools complement -i pterMadi2.sorted.genes.gff -g pterMadi2.genomefile > pter
 ```
 
 ## extract exons from gff file 
- need two files here, one with your typical bed files, and another with just exon in gff format. The gff format will allow for exon identifiers to be included in those gff files
+similar to before (including CDS, start/stops, 5primlseUTR, etc.)
 ```
-awk '$3 == "exon" {print $1 "\t" $4-1 "\t" $5}' pterMadi2.sorted.gff > pterMadi2.sorted.exons.bed # this will be so we can map intergenic regions
+awk '$3 == "exon" {print $1 "\t" $4-1 "\t" $5-1}' pterMadi2.sorted.gff > pterMadi2.sorted.exons.bed # this will be so we can map intergenic regions
 awk '$3 == "exon" {print $0}' pterMadi2.sorted.gff > pterMadi2.sorted.exons.gff # this ensures that we have a gff file to give intersect file exon names for later workflow
 ```
 
 ## join and sort 
 ```
 bedtools sort -i <(cat pterMadi2.sorted.intergenic.bed pterMadi2.sorted.exons.bed) -g pterMadi2.genomefile > pterMadi2.intergenic-and-exons.sorted.bed
-
 ```
 
 ## identify introns
@@ -96,73 +99,78 @@ bwa index pterMadi2_newheader.fna
 
 ## alignt probes to genome using bwa-mem
 ```
-bwa mem pterMadi2_newheader.fna Adephaga_2.9Kv1_UCE-Probes.fasta > pterMadi2-probes.sam
+bwa mem pterMadi2_newheader.fna Adephaga_pterMele1.fasta > probes.sam
 ```
 
 ## convert sam to bam
 samtools is already running in my environment
 ```
-samtools view -h -b -S pterMadi2-probes.sam > pterMadi2-probes.mem.bam
+samtools view -h -b -S probes.sam > probes.mem.bam
 ```
 
 ## sort bam file
 ```
-samtools sort pterMadi2-probes.mem.bam -o pterMadi2-probes.mem.sorted.bam
+samtools sort probes.mem.bam -o probes.mem.sorted.bam
 ```
+
 ## extract sequenced that mapped against the genome
 currently the bam file still contains unmapped information
 ```
-samtools view -b -F 4 pterMadi2-probes.mem.sorted.bam > pterMadi2-probes.mem.sorted.mapped.bam
+samtools view -b -F 4 probes.mem.sorted.bam > probes.mem.sorted.mapped.bam
 ```
 ## create a bed file 
 ```
-bedtools bamtobed -i pterMadi2-probes.mem.sorted.mapped.bam > pterMadi2-probes.mem.sorted.mapped.bed
+bedtools bamtobed -i probes.mem.sorted.mapped.bam > probes.mem.sorted.mapped.bed
 ```
 
 ## get intersect of adephaga probes and genome features
-use the -names option in the same order as the -b files this will give us a generic annotation to use in later analyses
+use the -names option in the same order as the -b files this will give us a generic annotation to use in later analyses. This is done for both the introns-exons and intergenic-genetic features.
 ```
-bedtools intersect -a pterMadi2-probes.mem.sorted.mapped.bed \
+bedtools intersect -a probes.mem.sorted.mapped.bed \
     -b pterMadi2.sorted.introns.bed \
     pterMadi2.sorted.exons.gff  \
     -names intron exon \
     -wb > Adephaga2.9-pterMadi2.introns-exons.intersect
+```
 
-bedtools intersect -a pterMadi2-probes.mem.sorted.mapped.bed \
+and
+
+```
+bedtools intersect -a probes.mem.sorted.mapped.bed \
     -b pterMadi2.sorted.intergenic.bed \
     pterMadi2.sorted.genes.gff \
     -names intergenic gene \
     -wb > Adephaga2.9-pterMadi2.intergenic-genentic.intersect
 ```
 
-## format the intersect file
-Columns are inconsistent otherwise, using a GFF file adds additional (but necessary) info. Here we get only what informatoin is necessary (not worried about strands or scores for now)
-For every line that has ensembl print only those columns, all other lines should only have those columns
+## format intersect file output
+We need to make sure output files are consistent.
+```
+awk '{ if ($9 =="ensembl") {print $1"\t"$2"\t"$3"\t"$4"\t"$7"\t"$8"\t"$11"\t"$12"\t"$16} else {print $1"\t"$2"\t"$3"\t"$4"\t"$7"\t"$8"\t"$9"\t"$10"\t"}}' Adephaga2.9-pterMadi2.introns-exons.intersect > Adephaga2.9-pterMadi2.introns-exons.out.intersect
+awk '{ if ($9 =="ensembl") {print $1"\t"$2"\t"$3"\t"$4"\t"$7"\t"$8"\t"$11"\t"$12"\t"$16} else {print $1"\t"$2"\t"$3"\t"$4"\t"$7"\t"$8"\t"$9"\t"$10"\t"}}' Adephaga2.9-pterMadi2.intergenic-genentic.intersect > Adephaga2.9-pterMadi2.intergenic-genentic.out.intersect
 
+```
+
+## generate all gene info
+this will let us identify proportion of UCEs mapped and total genes
+
+```
+awk '$3 == "gene" {print $1 "\t" $4-1 "\t" $5-1 "\t" $3 "\t" $9}' pterMadi2.sorted.gff > pterMadi2.sorted.all_genes.gff
+```
 
 ---
 
 ## intresect file format
 
 ```
-scaffold    qstart    qend    query   type    seqname    seqstart   seqend  attribute
-1	39310	39334	uce-127282_p11	60	+	intron	1	39281	39334
-1	39334	39419	uce-127282_p11	60	+	exon	1	ensembl	exon	39335	39463	.	+	.	Parent=transcript:ENSMPTT00005003008;constitutive=0;exon_id=ENSMPTE00005013128;rank=8;version=1
-1	39334	39419	uce-127282_p11	60	+	exon	1	ensembl	exon	39335	39463	.	+	.	Parent=transcript:ENSMPTT00005003000;constitutive=0;exon_id=ENSMPTE00005013128;rank=8;version=1
-1	39339	39459	uce-127282_p12	60	+	exon	1	ensembl	exon	39335	39463	.	+	.	Parent=transcript:ENSMPTT00005003008;constitutive=0;exon_id=ENSMPTE00005013128;rank=8;version=1
-1	39339	39459	uce-127282_p12	60	+	exon	1	ensembl	exon	39335	39463	.	+	.	Parent=transcript:ENSMPTT00005003000;constitutive=0;exon_id=ENSMPTE00005013128;rank=8;version=1
+chromosome  qstart  qend   query   score    strand  feature_type    chromosome  refstart refend identity
+1	39310	39334	uce-127282_p11	intron	1	39280	39334	
+1	39334	39419	uce-127282_p11	exon	1	39335	39463	Parent=transcript:ENSMPTT00005025911;constitutive=0;exon_id=ENSMPTE00005153951;rank=8;version=1
+1	39334	39419	uce-127282_p11	exon	1	39335	39463	Parent=transcript:ENSMPTT00005038483;constitutive=0;exon_id=ENSMPTE00005153951;rank=8;version=1
+1	39339	39459	uce-127282_p12	exon	1	39335	39463	Parent=transcript:ENSMPTT00005025911;constitutive=0;exon_id=ENSMPTE00005153951;rank=8;version=1
+1	39339	39459	uce-127282_p12	exon	1	39335	39463	Parent=transcript:ENSMPTT00005038483;constitutive=0;exon_id=ENSMPTE00005153951;rank=8;version=1
+1	59597	59717	uce-258245_p11	exon	1	58920	59766	Parent=transcript:ENSMPTT00005038664;constitutive=1;exon_id=ENSMPTE00005103684;rank=1;version=1
+1	59637	59757	uce-258245_p12	exon	1	58920	59766	Parent=transcript:ENSMPTT00005038664;constitutive=1;exon_id=ENSMPTE00005103684;rank=1;version=1
+1	1011172	1011292	uce-71245_p11	exon	1	1010689	1011370	Parent=transcript:ENSMPTT00005027261;constitutive=0;exon_id=ENSMPTE00005118795;rank=3;version=1
+
 ```
-
-## general statistics using grep & wc in bash
-
-_Pterostichus madidus_ and Adephaga 2.9k probes
-
-total probes: 38948
-
-total matches: 22072
-
-exons: 11560 / 22072
-
-intergenic: 7120 / 22072
-
-introns: 3392 / 22072
