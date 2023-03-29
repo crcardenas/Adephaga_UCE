@@ -194,3 +194,20 @@ This allows us to keep track of the real names of the probes (especially for the
 ## Scripts used to convert
 
 
+### find upper limit
+[natsort](https://anaconda.org/anaconda/natsort) is not a native linux command
+```
+grep ">" Adephaga_2.9Kv1_UCE-Probes.fasta | cut -d"|" -f1 | cut -d_ -f1 | uniq | natsort | tail
+```
+Adephaga uce probes: highest ID **276883** 
+Coleoptera no_intersect uce probes: 1172; 31213 total probes, **start at 500000**
+vasil ahe probes: 49786 total probes, **start at 1000000**
+
+### append real name to metadata
+should be at end of header line and formated like this : `...,original-probe-ID:probeID` 
+Note, I am unsure if the space between the start of the probe and pipe are necessary, BUT they will be kept to follow current formating standards
+```
+awk 'BEGIN{RS=">";-F" |"} (NR>1) {print ">" $1 " " $2",original-probe-ID:"$1 "\n" $3}' data/Coleoptera-UCE-1.1k_nointersect.fasta > Coleoptera-UCE-1.1K-v1_nointersect.tmp.fasta
+awk 'BEGIN{RS=">";-F" |"} (NR>1) {print ">" $1 " " $2",original-probe-ID:"$1 "\n" $3}' data/vasilikopoulos_etal_ahe_nointersect.fasta > vasilikopoulos_etal_ahe_nointersect.tmp.fasta 
+```
+
