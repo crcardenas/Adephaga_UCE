@@ -767,6 +767,8 @@ printf "intersect of probes complete\n"
 
 ## Format intersect files
 
+!!! CHECK HERE
+
 Ensure intersect files have a consistent format. Gene feature information should be retained for features that have it (name, ID, parent transcript, etc.). Here is an example script 
 
 ```
