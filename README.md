@@ -22,47 +22,6 @@ Two important assumptions being made about the genome and genes being used:
 4. create a list of probes that should be concatenated in a partition file for phylogenetic analysis
     1. create a script to integrate it based on an existing partition file (e.g., output of Phyluce)
 
-
-## Data
-
-This pipeline will mainly use the [*Pterostichus madidus*](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9315234/) genome for testing and finalizing the workflow, but others will be used. Genomes with annotations (general feature files, GFF) can be found at the [Darwin Tree of Life ensembl](https://projects.ensembl.org/darwin-tree-of-life/). 
-
-Ensure you have a GFF3 format. For details on GFF format, see [here](http://gmod.org/wiki/GFF3).
-
-### __*!!! genomes used are likely to change by final analysis, likely just the ones with GFF files Neb.brevicolis, Oph.ardosiacus, and Pte.madidus*__
-
-__Available genomes and their names names__
-
-|code|name|ID|
-|---|---|---|
-|agrPla1|*Agrilus planipennis*|GCA_000699045.1|
-|\* ampIns|*Amphizoa insolens*|DNA3784|
-|anoGla1|*Anoplophora glabripennis*|GCA_000390285.1|
-|\* bemHap1|*Bembidion haplogonum*|DNA2544|
-|\* chlSer1|*Chlaenius sericeus*|DNA4821|
-|denPon1|*Dendroctonus ponderosae*|GCA_000355655.1|
-|lepDec|*Leptinotarsa decemlineata*|GCA_000500325.1|
-|lioTuu1|*Lionepha*|DNA3782|
-|menMol1|*Mengenilla moldrzyki*|GCA_000281935.1|
-|! nebBrevi1|*Nebria brevicolis*|GCA_944738965.1|
-|! nebSali1|*Nebria salina*|GCA_944039245.1|
-|\* omoHam1|*Omoglymmius hamatus*|DNA3783|
-|ontTau1|*Onthophagus taurus*|GCA_000648695.1|
-|! ophArdo1|*Ophonus ardosiacus*|GCA_943142095.1|
-|! pteMad2|*Pterostichus madidus*|GCA_911728475.2|
-|\* pteMel1|*Pterostichus melenarius*|DNA3787|
-|\* traGib1|*Trachypachus insolens*|DNA3786|
-|triCas2|*Tribolium castaneum*|GCA_000002335.2|
-
-(* indicates Adephaga reference genome; ! indicates a genome feature file)
-
-__probe file names:__
-* vasilikopoulos_etal_ahe_probes.fasta
-* Adephaga_2.9Kv1_UCE-Probes.fasta
-* Coleoptera-UCE-1.1K-v1.fasta
-
-### genomes are removed from the github repository due to their size
-
 # Software and packages used
 
 ### __*!!! create a json file with environment for download and easy duplication of the environent*__
