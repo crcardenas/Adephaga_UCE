@@ -67,14 +67,18 @@ colnames(sp2_bedfile) <- c(paste0("chr_",species2),
 # genome fai index files
 sp1_fai <- read.table(c(paste0("../",species1,".fna.fai")))
 rownames(sp1_fai) <- sp1_fai$V1
+# add column names?
 
 sp2_fai <- read.table(c(paste0("../",species2,".fna.fai")))
 rownames(sp2_fai) <- sp2_fai$V1
+# add column names?
 
 #### Manipulate data ####
 # Order according to chromosome names
 sp1_fai <- sp1_fai[mixedsort(rownames(sp1_fai),decreasing = F),]
 sp2_fai <- sp2_fai[mixedsort(rownames(sp2_fai),decreasing = F),]
+
+# remove short chromosomes?
 
 #### scripting notes ####
 # use some variable in file path
@@ -161,6 +165,9 @@ sp2_fai <- sp2_fai[mixedsort(rownames(sp2_fai),decreasing = F),]
    # write.table(busco,file="D:/Dropbox/Ithomiines/ReferenceGenomes/curatedMelinaeaGenomes/busco.comparison.txt")
    # busco<-read.table("D:/Dropbox/Ithomiines/ReferenceGenomes/curatedMelinaeaGenomes/busco.comparison.txt",header=T)
   
+
+# ! Consider saving the R script files
+
    # Plot the gene coordinates against each other
    par(mfrow=c(1,1),mar=c(4,4,1,1),mgp=c(1.7,0.5,0),xaxs="i",yaxs="i")
    plot(busco2$addPos_sali,busco2$addPos_brev,xaxt="n",yaxt="n",
