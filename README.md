@@ -42,4 +42,6 @@ conda install -c bioconda bedtools blast bwa samtools seqkit
 conda install -c anaconda natsort
 ```
 
-This pipeline should be able to run on a personal laptop (windows with linux subsystem and linux, uncertain about mac) with sufficient storage, memory and CPU available. Alternatively, you can .... [add json information]
+This pipeline should be able to run on a personal laptop (windows with linux subsystem and linux, uncertain about mac) with sufficient storage, memory and CPU available.
+
+To follow this workflow, for now see the complete [markdown file](UCE_characterization_and_concatenation_workflow-v0.3.md).
