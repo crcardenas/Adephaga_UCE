@@ -6,13 +6,9 @@ date: 2023.08
 
 # TASKS
 
-1. test&cleanup Rscript output
-	1. re-format R script to accomidate one `*out.intersect file` that has all feature info. If it is an exon or intron it *is* a gene feature. So it should, in theory, be easier to manipulate.
-	2. generate vendiagram of exons,introns,genic,intergenic loci (in R)
-2. test Jeremy's synteny plot of UCE's and  
-	1. run busco on all genomes to find orthologous genes
-	2. test synteny plots pairwise for each genome used
-3. Clean up file, check for grammar etc.
+1. test Jeremy's synteny plot of UCE's and  
+	1. test synteny plots pairwise for each genome used
+2. Clean up file, check for grammar etc.
 
 !!! check with Manu about doing UCE recovery by clade? then concatenating it all together... idk... *might* help with locus recovery, but I need to think how to do this in Phyluce
 
@@ -106,22 +102,23 @@ Steps to process data:
 3. create genome file
 4. unrwap probe fasta files that need it
 
-## new headers for FNA files
+## new headers for FNA/FA/FASTA files
 
-check the scaffold/chromosome naming conventions in your `*.fna` files and adjust for awk replacement outlined here:
+### `SEGMENTATION FAULT?`
+```
+index.sh: line 29: 72366 Segmentation fault      (core dumped)
+```
+
+BECAUSE YOU LOST ALL YOUR SEQUENCE DATA WITH YOU FASTA FILES WHEN EDITING THE HEADERS! CHECK THIS STEP AGAIN DINGUS!
+
+check the scaffold/chromosome naming conventions in your `*.fna` and `*.gff3` files and adjust for replacement.
 
 ```
-awk -F" " '{ if ($1~">CAJVRY") {gsub(">",""); print ">"$1} else {print $0}}' GCA_911728475.2_icPteMadi1.2_genomic.fna > tmp.fna
-
-
-awk -F" " '{ if ($1~">OU") {print ">"$NF} else {print $0}}' tmp.fna > pteMadi2.fna
-
-
-rm ./tmp.fna
+awk 'BEGIN { FS=" " } { if (/^>/) { print $1 } else { print $0 }}' genome.fa > gen1.fna
 ```
+
 
 ## bedtools genome file
-
 
 ```
 tr -s " " \\t < Pterostichus_madidus-GCA_911728475.2-2022_03-genes.gff | awk -F"\t" '{ if ($1~"##sequence-region") print $2 "\t" $4}' | natsort > pterMadi2.genomefile
@@ -163,8 +160,6 @@ to simplify the pipeline and naming conventions I am shortening the probe files 
 └── workflow.md
 ```
 
-
-!!!! once pipeline is finalized get genomes with GFF files into the genome directory !!!!
 
 ## Extract gene features
 
@@ -313,6 +308,7 @@ for i in $(cat genomes\.list); do
 done
 ```
 
+
 ### `run.sh`
 This script runs the pipeline, calling the `index.sh` and then `sam2bed.sh` scripts. These files should be in the same directory as the `run.sh`. Ensure you input the genome fna file 
 
@@ -429,7 +425,7 @@ else
 	bedtools bamtobed -i '2mapping/'$PROBE-$GEN.mem.sorted.mapped.bam \
 		> '2mapping/'$PROBE'-'$GEN'.mem.sorted.mapped.bed'
 
-	printf "output $PROBE-$GEN.mem.sorted.mapped.bed in 2mapping/ directory\n"
+	printf "output $PROBE-$GEN.mem.sorted.mapped.bed in 2mapping/ directory\n\n"
 
 fi
 
@@ -450,12 +446,12 @@ fi
 awk '{if ($3 != "*") print $0}' '2mapping/'$PROBE'-'$GEN'.sam' | \
 	grep -v "@" |  \
 	awk '{print $1}' | \
-	cut -d p -f 1 | \
+	cut -d "p" -f 1 | \
 	sort -u | \
 	grep "." -c \
 		> '2mapping/'tmp.uce.count
 
-printf "Total  of $PROBE loci mapped against $GEN\t" && cat 2mapping/tmp.uce.count
+printf "Total number of $PROBE loci mapped against $GEN\t" && cat 2mapping/tmp.uce.count
 
 # number of multiple mappings
 # count multi mapping
@@ -464,7 +460,7 @@ cat '2mapping/'$PROBE'-'$GEN'.sam' |
 	grep "SA:" -c \
 		> 2mapping/tmp.multi-uce.count
 
-printf "Total $PROBE loci with multiple mappings in $GEN\t" && cat 2mapping/tmp.multi-uce.count
+printf "Total $PROBE probes with multiple mappings in $GEN\t" && cat 2mapping/tmp.multi-uce.count
 
 # store  names
 cat '2mapping/'$PROBE'-'$GEN'.sam' | grep -v "@" | grep "SA:" > 2mapping/tmp.multi
@@ -473,7 +469,7 @@ cat '2mapping/'$PROBE'-'$GEN'.sam' | grep -v "@" | grep "SA:" > 2mapping/tmp.mul
 awk '{print $1}' 2mapping/tmp.multi | cut -d "p" -f 1 | sort -u | wc -l > 2mapping/tmp.multi-uce.count
 
 # list of uce to remove
-awk '{print $1}' 2mapping/tmp.multi | cut -d "p" -f 1 | sort -u > '2mapping/'$PROBE'_to_remove.list'
+awk '{print $1}' 2mapping/tmp.multi | cut -d "p" -f 1 | sort -u > '2mapping/'$GEN'-'$PROBE'_to_remove.list'
 
 # store summary
 if [ -f 2mapping/summary.txt ]; then
@@ -492,7 +488,7 @@ NAME=$(printf "$PROBE-$GEN")
 
 MAPPEDLOCI=$(cat 2mapping/tmp.uce.count)
 
-TOTALLOCI=$(cat '0data/probes/'$PROBE'.fasta' | grep ">" | cut -d "|" -f 1 | cut -d p -f 1 | sort -u | grep "." -c)
+TOTALLOCI=$(cat '0data/probes/'$PROBE'.fasta' | grep ">" | cut -d "|" -f 1 | cut -d _ -f1 | sort -u | grep "." -c)
 
 MULTIMAPPING=$(cat 2mapping/tmp.multi-uce.count)
 
@@ -517,11 +513,13 @@ else
 		else if (NR==1) { printf("%s", $0); } 
 		else { printf("\t%s", $0); } 
 		}' '0data/probes/'$PROBE'.fasta' | \
-	grep -vf '2mapping/'$PROBE'_to_remove.list' - | \
+	grep -vf '2mapping/'$GEN'-'$PROBE'_to_remove.list' - | \
 	tr "\t" "\n" \
 		> '0data/probes/'$PROBE'_2.fasta';
 
-	printf "Loci removed fom $PROBE\t" && grep ">" '0data/probes/'$PROBE'.fasta' -c
+# grep -A 1 -vf '2mapping/'$PROBE'_to_remove.list' '0data/probes/'$PROBE'.fasta' > '0data/probes/'$PROBE'_2.fasta'
+
+	printf "Probes removed from $PROBE\t" && grep "_" '2mapping/'$GEN'-'$PROBE'_to_remove.list' -c
 
 	# use BWA to remap using mem
 	# check for indexed genome files and if none are present index them and then map
@@ -600,7 +598,7 @@ else
 	awk '{if ($3 != "*") print $0}' '2mapping/'$PROBE'-'$GEN'_2.sam' | \
 		grep -v "@" |  \
 		awk '{print $1}' | \
-		cut -d p -f 1 | \
+		cut -d "p" -f 1 | \
 		sort -u | \
 		grep "." -c \
 			> '2mapping/'tmp.uce.count
@@ -638,11 +636,11 @@ else
 	# store summary
 		if [ -f 2mapping/summary.txt ]; then
 
-			printf "Writing mapping summary for $PROBE-$GEN_2\n"
+			printf "Writing mapping summary for $PROBE-$GEN""_2\n"
 
 		else
 
-			printf "Writing mapping summary for $PROBE-$GEN_2\n"
+			printf "Writing mapping summary for $PROBE-$GEN""_2\n"
 		
 			printf "probe-genome\tmapped-loci\ttotal-loci\tNumber-multi-mapped-loci\n" > 2mapping/summary_2.txt
 		fi
@@ -651,7 +649,7 @@ else
 
 	MAPPEDLOCI=$(cat 2mapping/tmp.uce.count)
 	
-	TOTALLOCI=$(cat '0data/probes/'$PROBE'.fasta' | grep ">" | cut -d "|" -f 1 | cut -d p -f1 | sort -u | grep "." -c)
+	TOTALLOCI=$(cat '0data/probes/'$PROBE'.fasta' | grep ">" | cut -d "|" -f 1 | cut -d _ -f1 | sort -u | grep "." -c)
 	
 	MULTIMAPPING=$(cat 2mapping/tmp.multi-loci.count)
 
@@ -662,6 +660,8 @@ else
 fi
 
 printf "$PROBE-$GEN conversion and check complete\n\n"
+
+exit
 ```
 
 ### `intersect.sh`
@@ -676,11 +676,12 @@ bash intersect.sh genome.fna probes1-genome_2.mem.sorted.mapped.bed probes2-geno
 Again, multiple genomes can be used if you want
 
 ```
-for i in $(cat genomes\.list); do 
+for i in $(cat genomes\.list); do
+	GEN=$(echo $i | cut -d "." -f 1)
 	bash intersect.sh $i \
-	probes1-genome_2.mem.sorted.mapped.bed \
-	probes2-genome_2.mem.sorted.mapped.bed \
-	probes3-genome.mem.sorted.mapped.bed;
+	2mapping/Adephaga-${GEN}_2.mem.sorted.mapped.bed \
+	2mapping/Coleoptera-${GEN}_2.mem.sorted.mapped.bed \
+	2mapping/Vasil-${GEN}.mem.sorted.mapped.bed;
 done
 ```
 
@@ -772,39 +773,15 @@ printf "intersect of probes complete\n"
 
 ## Format intersect files
 
-We need to reduce redunancy in the `genome-PROBES.intersect` file, because probes mapped to genes will be reported twice, as genic and either exon or introns. We will create two files one with intergenic and genic mappings and one with intergenic, introns, and exons mappings. Because if a probe is genic it will be either intronic or exonic.
+You can reduce redunancy in the `genome-PROBES.intersect` file given that probes mapped to genes will be reported twice, as genic and either exon or introns. You can create two files one with intergenic and genic mappings and one with intergenic, introns, and exons mappings. However, these can be filtered simply using R. 
 
-It may be necessary to change what is included and excluded based on whether the `genome_detailed.sorted.gff` or `genome_simple.sorted.gff` file was used. This example code is shown works with the `*_simple.sorted.gff`
-
-```
-awk '($3 != "gene") {print $0}' 3intersect/genome-PROBES.intersect > 3intersect/genome-PROBES.exon-intron.intersect
-
-awk '($3 != "exon" && $3 != "intron") {print $0}' 3intersect/pteMadi2-PROBES.intersect > 3intersect/genome-PROBES.genic-intergenic.intersect
-
-# and output for R analysis
-# if exn or intron, then it is a genic feature, includes intergenic regions.
-awk -F"\t" '($3 != "gene") {print $11"\t"$12"\t"$13"\t"$14"\t"$3"\t"$1"\t"$4"\t"$5"\t""probeset="$10";"$9}' 3intersect/pteMadi2-PROBES.intersect > 3intersect/genome-PROBES.exon-intron.out.intersect
-
-#just genic or intergenic intersects
-awk -F"\t" '($3 != "exon" && $3 != "intron") {print $11"\t"$12"\t"$13"\t"$14"\t"$3"\t"$1"\t"$4"\t"$5"\t""probeset="$10";"$9}' 3intersect/pteMadi2-PROBES.intersect > 3intersect/genome-PROBES.genic-intergenic.out.intersect
+It may be necessary to change what is included and excluded based on whether the `genome_detailed.sorted.gff` or `genome_simple.sorted.gff` file was used. This example code is shown works with the `*_simple.sorted.gff` and will produce a an tab delimited file with all probefiles. To subset by a condition simply select based on the column: 
 
 ```
-
-```
-awk -F"\t" '($3 != "exon" && $3 != "intron") {print $11"\t"$12"\t"$13"\t"$14"\t"$3"\t"$1"\t"$4"\t"$5"\t"$9";probeset="$10}' 3intersect/pteMadi2-PROBES.intersect | head
-```
-$1"\t"$2"\t"$3"\t"$4"\t"$7"\t"$8"\t"$11"\t"$12"\t"$16";p} }'
-~~ old formating ~~
-
-Ensure intersect files have a consistent format. Gene feature information should be retained for features that have it (name, ID, parent transcript, etc.). For the R analysis, the outputformat for the `pteMadi2-PROBES.intersect` 
-
-```
-awk '{ if ($9 =="ensembl") {print $1"\t"$2"\t"$3"\t"$4"\t"$7"\t"$8"\t"$11"\t"$12"\t"$16} else {print $1"\t"$2"\t"$3"\t"$4"\t"$7"\t"$8"\t"$9"\t"$10"\t"}}' Adephaga-pteMadi2.introns-exons.intersect > Adephaga2.9-pterMadi2.introns-exons.out.intersect
-
-awk '{ if ($9 =="ensembl") {print $1"\t"$2"\t"$3"\t"$4"\t"$7"\t"$8"\t"$11"\t"$12"\t"$16} else {print $1"\t"$2"\t"$3"\t"$4"\t"$7"\t"$8"\t"$9"\t"$10"\t"}}' Adephaga2.9-pterMadi2.intergenic-genentic.intersect > Adephaga2.9-pterMadi2.intergenic-genentic.out.intersect
+awk -F"\t" '($3 != "gene") {print $11"\t"$12"\t"$13"\t"$14"\t"$3"\t"$1"\t"$4"\t"$5"\t""probeset="$10";"$9}' file.intersect | awk -F";" '$1=$1' OFS="\t" > out.intersect
 ```
 
-The intersect of the probe flies can now be analyized with the Rscript or the rest of the pipline can be followed
+The intersect of the probe flies can now be analyized with the R script or the rest of the pipline can be followed
 
 ## Current Directory Structure
 The directory structure should now look like this 
