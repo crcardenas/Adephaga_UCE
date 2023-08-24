@@ -104,15 +104,6 @@ Steps to process data:
 
 ## new headers for FNA/FA/FASTA files
 
-### `SEGMENTATION FAULT?`
-```
-index.sh: line 29: 72366 Segmentation fault      (core dumped)
-```
-
-BECAUSE YOU LOST ALL YOUR SEQUENCE DATA WITH YOU FASTA FILES WHEN EDITING THE HEADERS! CHECK THIS STEP AGAIN DINGUS!
-
-check the scaffold/chromosome naming conventions in your `*.fna` and `*.gff3` files and adjust for replacement.
-
 ```
 awk 'BEGIN { FS=" " } { if (/^>/) { print $1 } else { print $0 }}' genome.fa > gen1.fna
 ```
