@@ -82,7 +82,7 @@ sp2_fai <- subset(sp2_fai, nchar(as.character(V1)) <= 3)
 sp1_exclude <- subset(sp1_bedfile, nchar(sp1_bedfile[,1]) > 3)[,4]
 sp2_exclude <- subset(sp2_bedfile, nchar(sp2_bedfile[,1]) > 3)[,4]
 # create a list
-exclude <- paste0(sp1_exclude,sp2_exclude)
+exclude <- unique(c(sp1_exclude,sp2_exclude))
 # remove those loci on those scaffolds
 sp1_bedfile <- sp1_bedfile[ ! (sp1_bedfile[,4] %in% exclude) , ]
 sp2_bedfile <- sp2_bedfile[ ! (sp2_bedfile[,4] %in% exclude) , ]
@@ -93,7 +93,7 @@ sp2_fai <- sp2_fai[mixedsort(rownames(sp2_fai),decreasing = F),]
 
 # add space between the chromosomes for visualisation
 sp1_fai$add<-cumsum(c(0,sp1_fai$V2[-length(sp1_fai$V2)]+11000000))
-sp2_fai$add<-cumsum(c(0,sp2_fai$V2[-length(sp2_fai$V2)]+7700000))
+sp2_fai$add<-cumsum(c(0,sp2_fai$V2[-length(sp2_fai$V2)]+7000000))
 
 # add color for plotting
 sp1_fai$col<-paletteMartin[1:nrow(sp1_fai)]
@@ -101,9 +101,9 @@ sp1_fai$col<-paletteMartin[1:nrow(sp1_fai)]
 # WORK ON THESE CODES
 # FOR TESTING swap orientation of chromosomes in species one
 chrLengths_sp1 <- as.data.frame(aggregate(sp1_bedfile[,3] ~ sp1_bedfile[,1],
-                                      FUN = max))
+                                          FUN = max))
 colnames(chrLengths_sp1) <- c(paste0("chr_",species1),
-                           paste0("len_",species1))
+                              paste0("len_",species1))
 for ( chr in chrLengths_sp1[,1] ) {
   sp1_bedfile[sp1_bedfile[,1]==chr,2:3] <- chrLengths_sp1[chrLengths_sp1[,1]==chr,2] - sp1_bedfile[sp1_bedfile[,1]==chr,2:3]
 }
@@ -146,8 +146,8 @@ loci2 <- loci[order(loci[,6], loci[,7]),]
         yaxt="n",
         col=as.integer(as.factor(loci2[,6])),
         pch=19,cex=0.5,
-        xlab=c(paste0(species1," chromosomes")),
-        ylab=c(paste0(species2," chromosomes")))
+        xlab=c(paste0(species2," chromosomes")),
+        ylab=c(paste0(species1," chromosomes")))
   
    # plot(loci[,9],
    #      loci[,5],
