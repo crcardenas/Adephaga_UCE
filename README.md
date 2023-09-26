@@ -7,6 +7,12 @@ date: 2023.09.26
 
 # Adephaga_UCE README 
 
+## Tasks
+
+1. double check synteny workflow
+2. add R markdown/script files
+3. check grammar in markdown files
+
 ## UCE characerization and concatenation for phylogenomic analysis of Adephaga
 
 The goal is to map probes to genomes in order to realize the total overalp of all probes used n the Adephaga data for __concatenation/merging multiple UCEs__ (as in [Van Dam et al 2021](https://academic.oup.com/sysbio/article/70/2/307/5880562)) on the same gene and __UCE characterization__. In general, folks will only have one probeset to use. But because I am integrating [anchored hybrid enrichment data](https://resjournals.onlinelibrary.wiley.com/doi/full/10.1111/syen.12508), [Adephaga UCE probes](https://onlinelibrary.wiley.com/doi/full/10.1002/ece3.5260)[Adephaga UCE probes](https://onlinelibrary.wiley.com/doi/full/10.1002/ece3.5260), and the original [Coleoptera UCE probes](https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.12754) I will need to create a merged dataset (nameed joined).
