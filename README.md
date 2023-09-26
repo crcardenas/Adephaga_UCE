@@ -45,7 +45,7 @@ conda install -c anaconda natsort
 
 This pipeline should be able to run on a personal laptop (windows with linux subsystem and linux, uncertain about mac) with sufficient storage, memory and CPU available.
 
-All scripts are found in the [scripts directory]()
+All scripts are found in the [scripts directory](/scripts/)
 
 To follow this workflow, for now see the complete [markdown files](/markdown_files/workflow_v4_26092023.md); or follow the step by step workflow:
 1. [Data processing](/markdown_files/data_processing.md)
