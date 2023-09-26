@@ -1,0 +1,228 @@
+---
+title: "Adephaga-pteMadi2_analysis"
+author: "CR Cardenas"
+date: "2023-08-19"
+output: html_document
+---
+
+## Tasks:
+1) test format of output from intersect.sh
+2) generate new statistics for Adephaga, UCEs, and Vasil Probes
+
+### Load Library
+```{r,message=FALSE}
+library(tidyr) # data clean up
+library(dplyr) # data cleanup
+library(readr) # for importing
+library(ggplot2) # for plotting
+library(scales) # additional package for plotting
+library(ggtext) # additional package for plotting
+library(VennDiagram ) # additional package for plotting
+#library(psych) # for statistics, if necessary
+# library(GenomicFeatures) # my not actually need this since we are doing our own thing
+```
+
+### Import mapped Probes
+
+```{r}
+d <- read_tsv(file="pteMadi2-PROBES.testout.intersect", 
+                                col_names = F, 
+                                na = c("","NA"))
+colnames(d) <- c("scaffold","qstart","qend","query","feature","seqname","seqstart","seqend","probeset","X1","X2","X3","X4","X5","X6")
+d
+```
+
+### Subset data
+
+Can choose to subset by probe type, feature type (genic-intergenic, without gene features, etc.). Because of formatting issues with the Vasil data, only Adephaga probes will be analyzed.
+
+1) Must split out query column, one for UCE and one for UCE probe (UCE#_p##)
+  - query
+  - uce
+  - uce_probe
+
+2) Remove gene rows, because exons and introns are genic and can be accounted for as such later
+  - Called "df.*.iie" (abbreviated intergenic intron exon)
+  - need to take into account multiple genic ID's, using "rank=1" if present (column X4)
+
+3) For later, split out GFF attribute column for gene features if present in gff file:
+  - Called "df.*.genes" 
+  - name
+  - transcript
+  - exon-id
+  
+```{r}
+
+#1
+df.adephaga <- d %>% separate_wider_delim(cols = probeset,
+                           delim = "=",
+                           names = c("probeset1","probeset")) %>%
+  filter(probeset == "Adephaga") %>% 
+  separate_wider_delim(cols = query,
+                       delim = "_",
+                       names = c("uce","probe")) %>%
+  mutate(query=paste(uce,probe, sep="_")) %>%
+  select(scaffold, qstart, qend, query, uce, probe, feature, seqname, seqstart, seqend, X1,X2,X3,X4,X5,X6)
+
+#2
+
+df.adephaga.iie <- filter(df.adephaga, feature != "gene") %>% 
+  separate_wider_delim(cols = X3,
+                       delim = "=",
+                       names = c("X31","ID")) %>% 
+  mutate(ID = coalesce(ID,feature)) %>% 
+  select(scaffold, qstart, qend, query, uce, probe, feature, seqname, seqstart, seqend, ID,X2,X5,X6)
+df.adephaga.iie
+
+#3
+df.adephaga.genenames <- df.adephaga %>% filter(feature == "gene") %>% 
+  separate_wider_delim(cols = X2,
+                       delim = "=",
+                       names = c("X21","name")) %>% 
+  filter(X21 != "constitutive") %>% 
+  separate_wider_delim(cols = X3,
+                       delim = "=",
+                       names = c("X31","ID")) %>%
+  select(scaffold, qstart, qend, query, uce, probe, feature, seqname, seqstart, seqend, ID, name)
+df.adephaga.genenames
+
+```
+  
+# Summary of UCE data
+
+!!  need to incorperate, intron-exon, intron-exon-intergenic, exon-intergenic columns in tables.
+
+```{r}
+# simple tables
+df.adephaga.iie %>% distinct(uce, .keep_all = T) %>% select(feature) %>% table()
+df.adephaga.iie %>% group_by(scaffold) %>%  distinct(uce, .keep_all = T) %>% select(feature) %>% table()
+
+# for plotting pie chart
+
+tmp.table <- df.adephaga.iie %>% distinct(uce, .keep_all = T) %>% select(feature) %>% table() %>% as.data.frame()
+colnames(tmp.table) <- c("feature","frequency")
+df.adephaga.iie.featureprop <- tmp.table %>% 
+  mutate(proportion = frequency/sum(frequency)) %>% 
+  select(feature,frequency,proportion)
+
+
+df.adephaga.iie.uce_features <- df.adephaga.iie %>% group_by(scaffold, uce) %>% summarise(feature = paste(sort(unique(feature)), collapse = "-"))
+
+# https://r-charts.com/part-whole/pie-chart-percentages-ggplot2/
+df.adephaga.iie.uce_features.piechart.labels <- df.adephaga.iie.uce_features %>% group_by(feature) %>% count() %>% ungroup() %>% mutate(prop = n / sum(n)) %>%  arrange(n) %>% mutate(labels=scales::percent(prop))
+mycolors <- RColorBrewer::brewer.pal(6,"Dark2")
+
+### ADD TITLE!
+tmp <- ggplot(df.adephaga.iie.uce_features.piechart.labels, 
+              aes(x="", y=prop, fill=feature)) + 
+  theme_void() +
+  geom_col(size=5) + 
+  geom_text(aes(label = labels), 
+            position = position_stack(vjust=0.5)) + 
+  coord_polar(theta="y")
+tmp + scale_fill_brewer(palette = "Set2") + 
+  labs(title= "Adephaga UCEs mapped on Pterostichus madidus genome")
+ggsave("pteMadi2_AdephagaProbes_piechart.pdf")
+
+# mycolors <- RColorBrewer::brewer.pal(6,"Dark2")
+# df.adephaga.iie.uce_features.piechart <- ggplot(
+#   df.adephaga.iie.uce_features,
+#   aes(x="", 
+#       y=feature, 
+#       fill=feature)) +
+#   geom_bar(stat="identity") +
+#   coord_polar("y",start = 0) +
+#   theme_void()
+# df.adephaga.iie.uce_features.piechart
+```
+
+## Vendiagram of UCE data
+1) first group by UCEs
+2) then summarize uces by feature to create lists
+3) apply a color pallet
+4) create a vendiagram
+
+```{r}
+
+adephaga.iie.exon <- df.adephaga.iie %>% 
+  filter(feature == "exon") %>% 
+  select(uce)%>% 
+  select(uce) %>% unlist() %>% unique() 
+
+adephaga.iie.intergenic <- df.adephaga.iie %>% 
+  filter(feature == "intergenic") %>% 
+  select(uce)%>% 
+  select(uce) %>% unlist() %>% unique() 
+
+adephaga.iie.intron <- df.adephaga.iie %>% 
+  filter(feature == "intron") %>% 
+  select(uce) %>% 
+  select(uce) %>% unlist() %>% unique() 
+
+adephaga.iie.genic <- df.adephaga.iie %>% 
+  filter(feature != "intergenic") %>% 
+  select(uce) %>% unlist() %>% unique() 
+
+mycolors <- RColorBrewer::brewer.pal(3, "Set2")
+
+VennDiagram::venn.diagram(x = list(adephaga.iie.exon, adephaga.iie.intron, adephaga.iie.intergenic),
+                          category.names = c("Exon", "Intron", "Intergenic"),
+                          
+                          main= "Adephaga UCEs mapped on Pterostichus madidus genome",
+                          main.fontfamily= "sans",
+                          main.fontface = "bold",
+                          sub="n = 2666 mapped UCE Loci of ~2,900",
+                          sub.fontfamily = "sans",
+                          
+                          # category/circle formating
+                          cat.pos = c(-20, 20, 0),
+                          cat.fontface = "bold",
+                          cat.fontfamily = "sans",
+                          fill = mycolors,
+                          fontface = "bold",
+                          fontfamily = "sans",
+                          alpha = c(0.4,0.4,0.4),
+                          print.mode = "percent",
+
+                          #output formating
+                          imagetype = "png",
+                          filename = 'pteMadi2_AdephagaProbes_vendiagram.png',
+                          output=T,
+                          disable.logging = T)
+
+```
+
+## Bar plot by chromosome frequency
+
+```{r}
+df.adephaga.iie %>% group_by(scaffold) %>%  distinct(uce, .keep_all = T) %>% select(feature) %>% table() %>% as_tibble()
+
+df.adephaga.iie.uce_features <- df.adephaga.iie %>% group_by(scaffold, uce) %>% summarise(feature = paste(sort(unique(feature)), collapse = "-")) %>% select(scaffold,feature) %>%  table() %>% as.data.frame()
+df.adephaga.iie.uce_features 
+
+# remove those that don't occur often to simplify graph
+# exon-intergenic, exon-intergenic-intron, intron
+
+df.adephaga.iie.uce_features.bychrom <- df.adephaga.iie.uce_features %>% 
+  filter(feature != "exon-intergenic",
+         feature != "exon-intergenic-intron",
+         feature != "intron") %>% 
+  ggplot(aes(x=factor(scaffold,
+                      level = c('1','2', '3','4','5','6','7','8','9',
+                      '10','11','12','13','14','15','16','17','18','X')),
+         y=Freq, fill=feature)) +
+  geom_col(position = "dodge",
+           orientation = "x",
+            width = 0.9) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(x="chromosome",
+       y="freq",
+       title= "Pterostichus madidus UCE distribution by chromosome") +
+  geom_text( aes(label=Freq),
+             position = position_dodge(width = 1),
+             size = 2.5,
+             vjust=-0.5)
+df.adephaga.iie.uce_features.bychrom
+ggsave("pteMadi2_AdephagaProbes_feature-by-chrom.pdf", width = 7, height = 4)
+```
+

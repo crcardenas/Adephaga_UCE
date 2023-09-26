@@ -1,0 +1,171 @@
+---
+title: "Paint-Chromosome"
+author: "CR Cardenas"
+date: "2023-02"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Paint UCEs on chromosomes
+
+Tasks:
+
+1) modfiy final figure to include multiple chromosomes (e.g., chr 1 has 2 examples, one with UCE painting and one with all gene painting)
+2) check outputs from previous rmd work
+3) check column classes, was having issues with that previously
+4) determine best course of action for scripts, Jeremy recomended thinking about the distribution of UCEs.
+    * something like the number of UCEs per Mbp along the genome?
+    * are the genes randomly distributed across the genome
+    * are UCEs randomly distributed across the genome?
+    * compare the distribution of genes and UCEs. This is probably the biggest challenge because genes aren't normally distributed across the genome.
+5) Think about why you want to do these statistics, how informative is it that these genes are doing what they are doing? Is it better to just know gene identities?
+
+*R dependency hell on linux*
+  search for r-cran dependencies on apt (`sudo apt search r-cran-...`)
+
+```{r}
+library(readr)
+library(ggplot2)
+library(tidyverse)
+library(RIdeogram)
+```
+
+In particular, I am using this software to image the UCE loci positions: make sure you reference them: http://doi.org/10.7717/peerj-cs.251
+
+please see the RIdeogram vignette for data format: https://cran.r-project.org/web/packages/RIdeogram/vignettes/RIdeogram.html
+
+I will be reformatting the output from my intersect R data wrangling to work with this. 
+_Note_, because I don't have centromere information for chromosomes we do not ned to include that here. 
+
+```{r}
+karyotype <- read_tsv("./pterMadi2.genomefile", col_names = c("chr","end")) %>% 
+  mutate(start = c("0")) %>% 
+  select(chr, start, end) %>% 
+  rename(Chr = chr) %>% 
+  rename(Start = start) %>% 
+  rename(End = end) %>% 
+  as.data.frame()
+df.karyotype <- karyotype %>% .[-c(19:25),] # no UCEs mapped to non-chromosomal scaffolds
+df.karyotype
+```
+
+check previous output formats *OR* read_tsv formats. Had to tr and sed inorder to clean the output file from other R project.
+`tr -s " " \\t < just_pterostichus_probes_intergenic-genetic.tsv | sed 's/"//g' | > pterMadi2.intergeneic-genetic.tsv`
+
+```{r}
+d.pterMadi2.genes <- read_tsv("./just_pterostichus_probes_intergenic.tsv", col_names = T) %>% na.omit() 
+pterMadi2.genes <- read_tsv("./just_pterostichus_probes_intergenic.tsv", col_names = T) %>% 
+  distinct(uce, .keep_all = T) %>% 
+  rename(Chr = scaffold) %>% 
+  rename(Start = qstart) %>% 
+  rename(End = qend) %>% 
+  mutate(Value = case_when(biotype == "protein_coding" ~ "100",
+                          biotype != "protein_coding" ~ "1",
+                          type == "intergenic" ~ "50")) %>% 
+  select(Chr, Start, End, Value) %>% 
+  as.data.frame()
+pterMadi2.genes$Value <- as.numeric(pterMadi2.genes$Value)
+pterMadi2.genes %>% head()
+# turning these off for knitting HTML
+# ideogram(karyotype = df.karyotype, overlaid = pterMadi2.genes, output = "temp.svg")
+# convertSVG("temp.svg", device = "png")
+
+```
+
+Rideogram doesnt save to a plot in R studio, just the directory. This is fine, it needs to be edited in InkScape to present the data in a non "heatmap" format. We need to integrate the non-UCE  gene regions as well.
+
+E.g., known coding regions == 100, unknown coding regions == 66, intergenic == 33, and non-uce genes == 0.
+![example plot](./chromosome.png)
+
+## Get genes that dont have UCEs
+
+This will require me to go back into the bash commandline and make sure I include a file that has the *non* mapped regions.
+
+With the original gff file I'll extract all genes, and then exclude them if they are already present in the data. There is probably a bedtools function that can let me extract gene features _not_ mapped. For now I can do that using awk and the GFF file.
+
+` $ awk '$3 == "gene" {print $1 "\t" $4-1 "\t" $5-1 "\t" $3 "\t" $9}' pterMadi2.sorted.gff > pterMadi2.sorted.gene.gff `
+
+
+Using the previous formatting we can get the bare minimum data we need to generate a list of gene features that did not map. We need the *.sorted.gene.gff & the intersect file
+
+```{r}
+d.genes <- read_tsv(file="./pterMadi2.sorted.gene.gff", col_names = F, na = c("","NA"))
+colnames(d.genes) <- c("Chr","Start","End","Type","attribute")
+d.genes
+# now split the columns
+df.genes <- d.genes %>% 
+  separate_wider_delim(cols = attribute, 
+                       delim = ";",
+                       names = c("ID","Name","biotype1","descrip1")) %>% 
+  separate_wider_delim(cols = ID,
+                       delim = ":",
+                       names = c("temp1","gene_id")) %>% 
+  separate_wider_delim(cols = Name,
+                       delim = "=", 
+                       names = c("descrip2","biotype")) %>%
+  select(Chr, Start, End, Type, biotype, gene_id)
+df.genes
+```
+
+Next step is to exclude genes that have already been mapped. Using the `d.pterMadi2.genes` DF as a reference/lookup object, we can exclude any gene that has been mapped. Additionally, we add a new column, `Value`, that gives us something to map with later. See next section
+
+```{r}
+# make list of Gene IDs with UCEs mapped to them
+list <- d.pterMadi2.genes %>% distinct(gene_id)
+unmapped <- df.genes[ !df.genes$gene_id %in% list$gene_id,]
+
+# use the ! negation and %in% logic
+pterMadi2.genes.unmapped <- unmapped %>% 
+  mutate(Value = 0) %>% 
+  select(Chr, Start, End, Value) %>% 
+  as.data.frame()
+pterMadi2.genes.unmapped$Value <- as.numeric(pterMadi2.genes.unmapped$Value)
+
+list
+unmapped
+pterMadi2.genes.unmapped %>% head()
+```
+
+UCEs in the genome represent only 13.67% of the coding genes!
+BUT how do they compare to the rest of the genome, we need to join these two dataframes 
+
+```{r}
+pterMadi2.genes2 <- read_tsv("./just_pterostichus_probes_intergenic.tsv", col_names = T) %>% 
+  distinct(uce, .keep_all = T) %>% 
+  rename(Chr = scaffold) %>% 
+  rename(Start = qstart) %>% 
+  rename(End = qend) %>% 
+  mutate(Value = case_when(biotype == "protein_coding" ~ "100",
+                          biotype != "protein_coding" ~ "66",
+                          type == "intergenic" ~ "33")) %>% 
+  select(Chr, Start, End, Value) %>% 
+  as.data.frame()
+pterMadi2.genes2$Value <- as.numeric(pterMadi2.genes2$Value)
+
+pterMadi2.UCE_nonUCEs <- full_join(pterMadi2.genes.unmapped, pterMadi2.genes2)
+
+# turning these off for HTML output
+#ideogram(karyotype = df.karyotype, overlaid = pterMadi2.UCE_nonUCEs, output = "temp.svg")
+#convertSVG("temp.svg", device = "png")
+```
+
+Again, here is the logic for mapping on the chromosomes
+
+* known coding regions == 100 (red)
+* unknown coding regions == 66 (orange)
+* intergenic == 33 (bluegreen)
+* and non-uce genes == 0 (blue)
+
+using this info I have modified this in an svg editor (inkscape, I wish I had illustrator!)
+The only change I have made includes changing size of the UCE vectors so they are easier to see. _*This is purely descriptive.*_
+![sample image](./pterMadi2-AdephagaUCE_mapping_edited4.png)
+
+
+
+---
+
+```{r}
+sessionInfo()
+```
+
