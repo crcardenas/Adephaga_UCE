@@ -55,7 +55,7 @@ All scripts are found in the [scripts directory](/scripts/)
 
 To follow this workflow, for now see the complete [markdown files](/markdown_files/workflow_v4_26092023.md); or follow the step by step workflow:
 1. [Data processing](/markdown_files/data_processing.md)
-2. [Map probes to gene features and intersect](/markdown_files/concatenate_loci.md)
+2. [Map probes to gene features and intersect](/markdown_files/map_probes_and_intersect.md)
 3. [Integrate probesets](/markdown_files/integrate_pobesets.md)
 4. [Concatenate probes by gene](/markdown_files/concatenate_loci.md)
 
