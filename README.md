@@ -10,8 +10,9 @@ date: 2023.09.26
 ## Tasks
 
 1. double check synteny workflow
-2. add R markdown/script files
-3. check grammar in markdown files
+2. Add slice flanking workflow
+3. add R markdown/script files
+4. check grammar in markdown files
 
 ## UCE characerization and concatenation for phylogenomic analysis of Adephaga
 
@@ -60,3 +61,11 @@ To follow this workflow, for now see the complete [markdown files](/markdown_fil
 4. [Concatenate probes by gene](/markdown_files/concatenate_loci.md)
 
 Lastly, to see the synteny comparison of genomes find the [synteny workflow here](/synteny_workflow/synteny_workflow.md)
+
+## Additional Adephaga UCE scripts
+
+An additional downstream result of this workflow is testing the effect of flanking+core-probe-regions, flanking, and core-probe-regions of sequence data in phylogenetic analysis inside phyluce. Initial analyses showed incredibly gappy alignments, likely due to the depth of evolutionary relationships and integration of a diverse set of genomic data collection methods. 
+
+The following markdown file: contains the scripts necessary to "slice" flanking regions from UCE data.
+
+1. IN PROGRESS
