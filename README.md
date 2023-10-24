@@ -68,4 +68,4 @@ An additional downstream result of this workflow is testing the effect of flanki
 
 The following markdown file: contains the scripts necessary to "slice" flanking regions from UCE data.
 
-1. IN PROGRESS
+1. [Slice flanking from core probe region](https://github.com/crcardenas/Adephaga_UCE/blob/main/markdown_files/Slice_flanking_from_core.md)
