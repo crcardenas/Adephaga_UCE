@@ -60,7 +60,6 @@ To follow this workflow, for now see the complete [markdown files](/markdown_fil
 3. [Integrate probesets](/markdown_files/integrate_pobesets.md)
 4. [Concatenate probes by gene](/markdown_files/concatenate_loci.md)
 
-Lastly, to see the synteny comparison of genomes find the [synteny workflow here](/synteny_workflow/synteny_workflow.md)
 
 ## Additional Adephaga UCE scripts
 
@@ -69,3 +68,5 @@ An additional downstream result of this workflow is testing the effect of flanki
 The following markdown file: contains the scripts necessary to "slice" flanking regions from UCE data.
 
 1. [Slice flanking from core probe region](https://github.com/crcardenas/Adephaga_UCE/blob/main/markdown_files/Slice_flanking_from_core.md)
+2. [Use synteny for a comparison of probe targets between genomes.](/synteny_workflow/synteny_workflow.md)
+3. Identify feature changes of probes between genomes [inprep](https://github.com/crcardenas/Adephaga_UCE)
