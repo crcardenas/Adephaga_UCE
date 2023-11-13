@@ -10,9 +10,8 @@ date: 2023.09.26
 ## Tasks
 
 1. double check synteny workflow
-2. Add slice flanking workflow
-3. add R markdown/script files
-4. check grammar in markdown files
+2. add R markdown/script files
+3. check grammar in markdown files
 
 ## UCE characerization and concatenation for phylogenomic analysis of Adephaga
 
