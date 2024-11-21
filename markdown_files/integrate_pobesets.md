@@ -219,7 +219,7 @@ Here are the resulting changes for the probes
 |0data/probes/Adephaga_2.fasta|FASTA|DNA|38,682|4,641,840|120|120|120|
 |0data/probes/Adephaga_3.fasta|FASTA|DNA|34,995|4,199,400|120|120|120|
 |0data/probes/Coleoptera.fasta|FASTA|DNA|13,674|1,640,880|120|120|120|
-|0data/probes/Coleoptera_2.fasta|FASTA|DNA|13,609|1,633,080|120|120|12|
+|0data/probes/Coleoptera_2.fasta|FASTA|DNA|13,609|1,633,080|120|120|120|
 |0data/probes/Vasil.fasta|FASTA|DNA|49,786|5,974,320|120|120|120|
 |5join-probes/Coleoptera.subset.tmp|FASTA|DNA|9,033|1,083,960|120|120|120|
 |5join-probes/Vasil.subset.tmp|FASTA|DNA|46,102|5,532,240|120|120|120|
