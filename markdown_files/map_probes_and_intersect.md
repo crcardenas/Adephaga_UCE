@@ -56,7 +56,7 @@ printf "ready to run intersect.sh\n"
 
 ### `index.sh`
 
-This script first indexes the genome and maps using BWA and then does the same using using blastn.
+This script first indexes the genome and maps using BWA.
 
 ```
 #!/bin/bash
