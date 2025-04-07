@@ -31,8 +31,6 @@ Two **important assumptions** being made about the genome and genes being used:
 
 # Software and packages used
 
-### __*!!! create a json file with environment for download and easy duplication of the environent*__
-
 * [bedtools](https://bedtools.readthedocs.io/en/latest/)
 * [blast](http://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs)
 * [BWA](https://bio-bwa.sourceforge.net/)
@@ -41,7 +39,13 @@ Two **important assumptions** being made about the genome and genes being used:
 * [seqkit](https://bioinf.shenwei.me/seqkit/)
 * [R](https://www.r-project.org/)
 
-Recomended installation procedure:
+you can download/create [this yml file](https://github.com/crcardenas/Adephaga_UCE/blob/main/characterization_debian12_20250407.yml) on your system and run:
+
+```
+conda env create --name characterization -f characterization_debian12_20250407.yml
+```
+
+Alternative installation procedure:
 ```
 conda create --name characterization
 conda activate characterization
