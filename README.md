@@ -53,6 +53,11 @@ conda install -c bioconda bedtools blast bwa samtools seqkit
 conda install -c anaconda natsort
 ```
 
+Mac users shoul first run:
+```
+conda config --add subdirs osx-64
+```
+
 This pipeline should be able to run on a personal laptop (windows with linux subsystem and linux, uncertain about mac) with sufficient storage, memory and CPU available.
 
 All scripts are found in the [scripts directory](/scripts/)
